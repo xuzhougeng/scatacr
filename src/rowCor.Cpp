@@ -4,7 +4,6 @@ using namespace std;
 
 // Adapted from https://github.com/AEBilgrau/correlateR/blob/master/src/auxiliary_functions.cpp
 // [[Rcpp::export]]
-
 Rcpp::NumericVector rowCorCpp(IntegerVector idxX, IntegerVector idxY, Rcpp::NumericMatrix X, Rcpp::NumericMatrix Y) {
 
   if(X.ncol() != Y.ncol()){

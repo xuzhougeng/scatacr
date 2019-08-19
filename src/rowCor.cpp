@@ -1,6 +1,4 @@
 #include <Rcpp.h>
-#include <RcppArmadillo.h>
-#include <RcppEigen.h>
 using namespace Rcpp;
 using namespace std;
 

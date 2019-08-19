@@ -230,7 +230,6 @@ insertionProfileSingles <- function(feature, fragments, by = "RG",
 #' @importFrom utils txtProgressBar
 #' @importFrom BiocGenerics start
 #' @importFrom BiocGenerics which
-#' @useDynLib scatacr
 #'
 #' @param feature GenomicRanges object  to store feature information
 #' @param fragments GenomicRanges object

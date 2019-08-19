@@ -4,7 +4,12 @@ using namespace Rcpp;
 using namespace std;
 
 // [[Rcpp::export]]
-IntegerMatrix tabulate2dCpp(IntegerVector x1, int xmin, int xmax, IntegerVector y1, int ymin, int ymax){
+IntegerMatrix tabulate2dCpp(IntegerVector x1,
+                            int xmin,
+                            int xmax,
+                            IntegerVector y1,
+                            int ymin,
+                            int ymax){
   if(x1.size() != y1.size()){
     stop("width must equal size!");
   }

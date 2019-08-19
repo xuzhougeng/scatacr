@@ -21,15 +21,15 @@ BEGIN_RCPP
 END_RCPP
 }
 // rowCorCpp
-Rcpp::NumericVector rowCorCpp(IntegerVector idxX, IntegerVector idxY, Rcpp::NumericMatrix X, Rcpp::NumericMatrix Y);
+NumericVector rowCorCpp(IntegerVector idxX, IntegerVector idxY, NumericMatrix X, NumericMatrix Y);
 RcppExport SEXP _scatacr_rowCorCpp(SEXP idxXSEXP, SEXP idxYSEXP, SEXP XSEXP, SEXP YSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type idxX(idxXSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type idxY(idxYSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type X(XSEXP);
-    Rcpp::traits::input_parameter< Rcpp::NumericMatrix >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type X(XSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type Y(YSEXP);
     rcpp_result_gen = Rcpp::wrap(rowCorCpp(idxX, idxY, X, Y));
     return rcpp_result_gen;
 END_RCPP

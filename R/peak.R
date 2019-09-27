@@ -144,19 +144,21 @@ clusterGRanges <- function(gr,
 
 #' Run MACS2
 #'
-#' @importFrom parallel mclapply
+#' @param bed.path input BED path
+#' @param peak.dir output peak dir
 #' @param macs2Path macs2 path
 #' @param method q qvalue, p pvalue
 #' @param cutoff cutoff of pvalue or qvalue
 #' @param shift The arbitrary shift in bp
 #' @param extsize The arbitrary extension size in bp
 #' @param genomeSize Effective genome size
+#' @param bedGraph output bedGraph
+#' @param addtion additional options passed to MACS2
 #'
 #' @rdname runMACS2
 #' @export
-runMACS2 <- function(clusterResults,
-                     dirClusters = "results/LSI-Cluster-Beds",
-                     dirPeaks = "results/LSI-Cluster-Peaks",
+runMACS2 <- function(bed.path = NULL,
+                     peak.dir = NULL,
                      macs2Path = "macs2",
                      method = "q",
                      cutoff = 0.05,
@@ -164,72 +166,48 @@ runMACS2 <- function(clusterResults,
                      extsize = 150,
                      bedGraph = TRUE,
                      genomeSize = 2.7e9,
-                     numCores = 6){
+                     addtion = NULL){
 
-  if ( ! dir.exists(dirPeaks)){
-    dir.create(dirPeaks, recursive = TRUE)
+  if ( is.null(bed.path)){
+    stop("bed.path can not be empty")
   }
 
-
-  if (numCores > 1) {
-    mclapply(seq_along(clusterResults), function(j){
-      message(sprintf("%s of %s", j, length(clusterResults)))
-      clusterBed <- file.path(dirClusters, paste0(names(clusterResults)[j],".bed"))
-      cmdPeaks <- sprintf(
-        "%s callpeak -g %s --name %s --treatment %s --outdir %s --format BED --nomodel --call-summits --nolambda --keep-dup all",
-        macs2Path,
-        genomeSize,
-        names(clusterResults)[j],
-        clusterBed,
-        dirPeaks
-      )
-      if (!is.null(shift) & !is.null(extsize)) {
-        cmdPeaks <- sprintf("%s --shift %s --extsize %s", cmdPeaks, shift, extsize)
-      }
-      if (tolower(method) == "p") {
-        cmdPeaks <- sprintf("%s -p %s", cmdPeaks, cutoff)
-      }else {
-        cmdPeaks <- sprintf("%s -q %s", cmdPeaks, cutoff)
-      }
-
-      if (bedGraph){
-        cmdPeaks <- sprintf("%s -B --SPMR", cmdPeaks)
-      }
-
-      message("Running Macs2...")
-      message(cmdPeaks)
-      system(cmdPeaks, intern = TRUE)
-
-    })} else{
-    for(j in seq_along(clusterResults)){
-      message(sprintf("%s of %s", j, length(clusterResults)))
-      clusterBed <- file.path(dirClusters, paste0(names(clusterResults)[j],".bed"))
-      cmdPeaks <- sprintf(
-        "%s callpeak -g %s --name %s --treatment %s --outdir %s --format BED --nomodel --call-summits --nolambda --keep-dup all",
-        macs2Path,
-        genomeSize,
-        names(clusterResults)[j],
-        clusterBed,
-        dirPeaks
-      )
-      if (!is.null(shift) & !is.null(extsize)) {
-        cmdPeaks <- sprintf("%s --shift %s --extsize %s", cmdPeaks, shift, extsize)
-      }
-      if (tolower(method) == "p") {
-        cmdPeaks <- sprintf("%s -p %s", cmdPeaks, cutoff)
-      }else {
-        cmdPeaks <- sprintf("%s -q %s", cmdPeaks, cutoff)
-      }
-
-      if (bedGraph){
-        cmdPeaks <- sprintf("%s -B --SPMR", cmdPeaks)
-      }
-
-      message("Running Macs2...")
-      message(cmdPeaks)
-      system(cmdPeaks, intern = TRUE)
-    }
+  if ( is.null(peak.dir)){
+    stop("peak.dir can not be empty")
   }
+
+  if ( ! dir.exists(peak.dir)){
+    dir.create(peak.dir, recursive = TRUE)
+  }
+
+  cmdPeaks <- sprintf(
+    "%s callpeak -g %s --name %s --treatment %s --outdir %s --format BED --nomodel --call-summits --nolambda --keep-dup all",
+    macs2Path,
+    genomeSize,
+    sub("\\.bed","", basename(bed.path)),
+    bed.path,
+    peak.dir
+  )
+  if (!is.null(shift) & !is.null(extsize)) {
+    cmdPeaks <- sprintf("%s --shift %s --extsize %s", cmdPeaks, shift, extsize)
+  }
+  if (tolower(method) == "p") {
+    cmdPeaks <- sprintf("%s -p %s", cmdPeaks, cutoff)
+  }else {
+    cmdPeaks <- sprintf("%s -q %s", cmdPeaks, cutoff)
+  }
+
+  if (bedGraph){
+    cmdPeaks <- sprintf("%s -B --SPMR", cmdPeaks)
+  }
+
+  if ( ! is.null(addtion) ){
+    cmdPeaks <- sprintf("%s %s", cmdPeaks, addtion)
+  }
+
+  message("Running Macs2...")
+  message(cmdPeaks)
+  system(cmdPeaks, intern = TRUE)
 
 }
 

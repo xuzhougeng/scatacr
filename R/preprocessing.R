@@ -35,6 +35,20 @@ readFragments <- function(file = NULL,
   }
 }
 
+#' Get the cell number
+#' @param fragments GRanges object
+#' @param minFrags filter cell with few fragments
+#'
+#' @rdname getCellNum
+#' @export
+getCellNum <- function(fragments, minFrags = 0){
+
+  cell_number <- sum(table(fragments$RG) > minFrags)
+
+  return(cell_number)
+
+}
+
 #' Filter Fragments by fragments and enrichment score
 #'
 #' @importFrom S4Vectors mcols
@@ -81,7 +95,7 @@ filterFragments <- function(fragments,
 #'
 #' @param fragments a GRanges object
 #' @param txdb txdb object
-#' @param batchSize batch size
+#' @param batchSize split the cell into different batch for performance
 #' @rdname getTssProfile
 #' @export
 getTssProfile <- function(fragments,
@@ -105,61 +119,6 @@ getTssProfile <- function(fragments,
 
 }
 
-#' Plot TSS Profile
-#'
-#' @importFrom ggplot2 ggplot
-#' @importFrom ggplot2 aes
-#' @importFrom ggplot2 geom_hex
-#' @importFrom ggplot2 theme_bw
-#' @importFrom ggplot2 geom_hline
-#' @importFrom ggplot2 geom_vline
-#' @importFrom ggplot2 ggtitle
-#' @importFrom ggplot2 xlab
-#' @importFrom ggplot2 ylab
-#' @importFrom viridis scale_fill_viridis
-#' @importFrom stats complete.cases
-#'
-#' @param tssSingles object return from getTssProfile
-#' @param filterFrags threshold of fragments of cell
-#' @param filterTSS enrichment score of TSS
-#' @param outFile graphics file path
-#' @rdname plotTssProfile
-#' @export
-#'
-plotTssProfile <- function(tssSingles,
-                           filterFrags = 1000,
-                           filterTSS = 8,
-                           outFile = NULL){
-
-  tssSingles$cellCall <- 0
-  tssSingles$cellCall[tssSingles$uniqueFrags >= filterFrags &
-                        tssSingles$enrichment >= filterTSS] <- 1
-
-
-  tssSingles <- tssSingles[complete.cases(tssSingles),]
-  nPass  <- sum(tssSingles$cellCall==1)
-  nTotal <- sum(tssSingles$uniqueFrags >= filterFrags)
-
-  p <- ggplot(tssSingles[tssSingles$uniqueFrags > 500,],
-              aes(x = log10(uniqueFrags), y = enrichment)) +
-    geom_hex(bins = 100) +
-    theme_bw() + scale_fill_viridis() +
-    xlab("log10 Unique Fragments") +
-    ylab("TSS Enrichment") +
-    geom_hline(yintercept = filterTSS, lty = "dashed") +
-    geom_vline(xintercept = log10(filterFrags), lty = "dashed") +
-    ggtitle(sprintf("Pass Rate : %s of %s (%s)", nPass, nTotal, round(100*nPass/nTotal,2)))
-
-  if( is.null(outFile)){
-    return(p)
-  } else{
-    pdf(outFile)
-    print(p)
-    dev.off()
-    return(p)
-  }
-
-}
 
 
 #' Generate insertion profile from fragments
@@ -170,22 +129,21 @@ plotTssProfile <- function(tssSingles,
 #' @importFrom Matrix sparseMatrix
 #' @importFrom utils txtProgressBar
 #' @importFrom magrittr %>%
-#'
-#' @param feature GenomicRanges object  to store feature information
 #' @param fragments GenomicRanges object
+#' @param feature GenomicRanges object  to store feature information
 #' @param by metadata in mcols
 #' @param flank flank
 #' @param nrom nrom
 #' @param smooth smooth
 #' @param range range
-#' @param batchSize batch size
+#' @param batchSize Split the cell into N batch for performance
 #' @param ... Arguments passed to other methods
 #'
 #' @return An list with sparseMatrix, FRIP and total fragments
 #'
 #' @rdname insertionProfileSingles
 #' @export
-insertionProfileSingles <- function(feature, fragments, by = "RG",
+insertionProfileSingles <- function(fragments, feature, by = "RG",
                                     getInsertions = TRUE,
                                     fix = "center",
                                     flank = 2000,
@@ -195,11 +153,12 @@ insertionProfileSingles <- function(feature, fragments, by = "RG",
                                     batchSize = 100, ...){
 
   uniqueTags <- as.character(unique(mcols(fragments)[,by]))
-  splitTags <- split(uniqueTags, ceiling(seq_along(uniqueTags)/batchSize))
+  splitTags <- split(uniqueTags,
+                     ceiling(seq_along(uniqueTags) / batchSize))
 
   pb <- txtProgressBar(min = 0, max = 100, initial = 0, style = 3)
   batchTSS <- lapply(seq_along(splitTags), function(x){
-    setTxtProgressBar(pb, round(x * 100/length(splitTags), 0))
+    setTxtProgressBar(pb, round(x * 100 / length(splitTags), 0))
     profilex <- insertionProfileSingles_helper(
       feature=feature,
       fragments=fragments[which(mcols(fragments)[,by] %in% splitTags[[x]])],
@@ -234,7 +193,8 @@ insertionProfileSingles <- function(feature, fragments, by = "RG",
 #' @param feature GenomicRanges object  to store feature information
 #' @param fragments GenomicRanges object
 #' @param by metadata in mcols
-#' @param flank flank
+#' @param flank the set flank size of TSS to find the overlap of
+#' insertion
 #' @param nrom nrom
 #' @param smooth smooth
 #' @param range range
@@ -268,7 +228,10 @@ insertionProfileSingles_helper <- function(feature,
   center <- unique(resize(feature, width = 1, fix = fix, ignore.strand = FALSE))
 
   #get overlaps between the feature and insertions only up to flank bp
-  overlap <- DataFrame(findOverlaps(query = center, subject = insertions, maxgap = flank, ignore.strand = TRUE))
+  overlap <- DataFrame(findOverlaps(query = center,
+                                    subject = insertions,
+                                    maxgap = flank,
+                                    ignore.strand = TRUE))
   overlap$strand <- strand(center)[overlap[,1]]
   overlap$name <- mcols(insertions)[overlap[,2],by]
   overlap <- transform(overlap, id=match(name, unique(name)))
@@ -284,11 +247,14 @@ insertionProfileSingles_helper <- function(feature,
   #Insertion Mat
   profile_mat <- tabulate2dCpp(x1 = overlap$id, y1 = overlap$dist, xmin = 1, xmax = ids, ymin = -flank, ymax = flank)
   colnames(profile_mat) <- unique(overlap$name)
+
+  # insertion number fall into the flank of TSS
   profile <- rowSums(profile_mat)
 
   #normalize
-  profile_mat_norm <- apply(profile_mat, 2, function(x) x/max(mean(x[c(1:norm,(flank*2-norm+1):(flank*2+1))]), 0.5)) #Handles low depth cells
-  profile_norm <- profile/mean(profile[c(1:norm,(flank*2-norm+1):(flank*2+1))])
+  profile_mat_norm <- apply(profile_mat, 2,
+                            function(x) x / max(mean(x[c(1:norm,(flank*2-norm+1):(flank*2+1))]), 0.5)) #Handles low depth cells
+  profile_norm <- profile / mean(profile[c(1:norm,(flank*2-norm+1):(flank*2+1))])
 
   #smooth
   profile_mat_norm_smooth <- apply(profile_mat_norm, 2, function(x) zoo::rollmean(x, smooth, fill = 1))

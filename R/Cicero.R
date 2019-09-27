@@ -79,9 +79,15 @@ makeCDS <- function(se, binarize = TRUE, ...){
 #' @rdname makeCicero
 #' @export
 makeCicero <- function(cds, k = 50, ...){
+
+  if (! all(grepl("UMAP",colnames(colData(cds))))) {
+    stop("no UMAP in colData(cds)")
+  }
+
   # detect gene
   cds <- detect_genes(cds)
   cds <- estimate_size_factors(cds)
+
 
   #Reduced Dimensions
   dimred <- data.frame(

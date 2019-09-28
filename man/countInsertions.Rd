@@ -4,12 +4,12 @@
 \alias{countInsertions}
 \title{Generate insertion count matrixy by feature}
 \usage{
-countInsertions(query, fragments, by = "RG", ...)
+countInsertions(fragments, feature, by = "RG", ...)
 }
 \arguments{
-\item{query}{GenomicRanges object  to store feature information}
-
 \item{fragments}{GenomicRanges object}
+
+\item{feature}{GenomicRanges object  to store feature information}
 
 \item{by}{metadata in mcols}
 

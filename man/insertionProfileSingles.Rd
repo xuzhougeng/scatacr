@@ -4,14 +4,14 @@
 \alias{insertionProfileSingles}
 \title{Generate insertion profile from fragments}
 \usage{
-insertionProfileSingles(feature, fragments, by = "RG",
+insertionProfileSingles(fragments, feature, by = "RG",
   getInsertions = TRUE, fix = "center", flank = 2000, norm = 100,
   smooth = 51, range = 100, batchSize = 100, ...)
 }
 \arguments{
-\item{feature}{GenomicRanges object  to store feature information}
-
 \item{fragments}{GenomicRanges object}
+
+\item{feature}{GenomicRanges object  to store feature information}
 
 \item{by}{metadata in mcols}
 
@@ -21,7 +21,7 @@ insertionProfileSingles(feature, fragments, by = "RG",
 
 \item{range}{range}
 
-\item{batchSize}{batch size}
+\item{batchSize}{Split the cell into N batch for performance}
 
 \item{...}{Arguments passed to other methods}
 

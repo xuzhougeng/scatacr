@@ -15,7 +15,8 @@ insertionProfileSingles_helper(feature, fragments, by = "RG",
 
 \item{by}{metadata in mcols}
 
-\item{flank}{flank}
+\item{flank}{the set flank size of TSS to find the overlap of
+insertion}
 
 \item{smooth}{smooth}
 

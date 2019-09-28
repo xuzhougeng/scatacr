@@ -4,12 +4,15 @@
 \alias{runMACS2}
 \title{Run MACS2}
 \usage{
-runMACS2(clusterResults, dirClusters = "results/LSI-Cluster-Beds",
-  dirPeaks = "results/LSI-Cluster-Peaks", macs2Path = "macs2",
+runMACS2(bed.path = NULL, peak.dir = NULL, macs2Path = "macs2",
   method = "q", cutoff = 0.05, shift = -75, extsize = 150,
-  bedGraph = TRUE, genomeSize = 2.7e+09, numCores = 6)
+  bedGraph = TRUE, genomeSize = 2.7e+09, addtion = NULL)
 }
 \arguments{
+\item{bed.path}{input BED path}
+
+\item{peak.dir}{output peak dir}
+
 \item{macs2Path}{macs2 path}
 
 \item{method}{q qvalue, p pvalue}
@@ -20,7 +23,11 @@ runMACS2(clusterResults, dirClusters = "results/LSI-Cluster-Beds",
 
 \item{extsize}{The arbitrary extension size in bp}
 
+\item{bedGraph}{output bedGraph}
+
 \item{genomeSize}{Effective genome size}
+
+\item{addtion}{additional options passed to MACS2}
 }
 \description{
 Run MACS2

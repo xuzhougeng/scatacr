@@ -61,7 +61,7 @@ plotTssProfile <- function(tssSingles,
 #' @importFrom ggplot2 aes
 #' @importFrom ggplot2 geom_point
 #' @importFrom ggplot2 theme_bw
-#' @importFrom virids scale_color_viridis
+#' @importFrom viridis scale_color_viridis
 #'
 #' @rdname plot_GA_umap
 #' @export

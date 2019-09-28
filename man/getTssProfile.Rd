@@ -11,7 +11,7 @@ getTssProfile(fragments, txdb, batchSize = 1000)
 
 \item{txdb}{txdb object}
 
-\item{batchSize}{batch size}
+\item{batchSize}{split the cell into different batch for performance}
 }
 \description{
 TSS Profile

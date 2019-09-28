@@ -4,7 +4,7 @@
 \alias{readFragments}
 \title{Reading Fragment Files}
 \usage{
-readFragments(file = NULL, minFrags = 100, ...)
+readFragments(file = NULL, minFrags = 0, ...)
 }
 \arguments{
 \item{file}{fragments file path}

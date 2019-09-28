@@ -1,7 +1,9 @@
 #' LSI reduction analysis
 #'
 #' @importFrom Seurat CreateSeuratObject
-#' @importFrom Seurat RunLSI
+#' @importFrom Seurat CreateDimReducObject
+#' @importFrom Seurat DefaultAssay
+#' @importFrom irlba irlba
 #'
 #' @param mat GenomicRanges object  to store feature information
 #' @param nComponents Number of singular values to compute
@@ -18,6 +20,7 @@ seuratLSI <- function(mat, nComponents = 50,
                         nFeatures = NULL, ...){
 
   #TF IDF LSI adapted from flyATAC
+  row.names(mat) <- paste0("W_", 1:nrow(mat))
   cs <- Matrix::colSums(mat)
   if(binarize){
     message(paste0("Binarizing matrix..."))
@@ -28,17 +31,36 @@ seuratLSI <- function(mat, nComponents = 50,
     mat <- mat[head(order(Matrix::rowSums(mat),decreasing = TRUE),nFeatures),]
   }
 
-  # create a seurat object
-  row.names(mat) <- seq(1, nrow(mat))
+  #Calc TF IDF
+  message("Computing Term Frequency IDF...")
+  freqs <- Matrix::t(Matrix::t(mat)/Matrix::colSums(mat))
+  idf   <- as(log(1 + ncol(mat) / Matrix::rowSums(mat)), "sparseVector")
+  tfidf <- as(Matrix::Diagonal(x=as.vector(idf)), "sparseMatrix") %*% freqs
+
+  #Calc SVD then LSI
+  message("Computing SVD using irlba...")
+  svd <- irlba(tfidf, nComponents, nComponents)
+  svdDiag <- matrix(0, nrow=nComponents, ncol=nComponents)
+  diag(svdDiag) <- svd$d
+  matSVD <- t(svdDiag %*% t(svd$v))
+  rownames(matSVD) <- colnames(mat)
+  colnames(matSVD) <- paste0("LSI_",seq_len(ncol(matSVD)))
+
+  #Make Seurat Object
+  message("Making Seurat Object...")
+  mat <- mat[1:100,] + 1
   obj <- CreateSeuratObject(mat,
                             assay = "ATAC",
                             project='scATAC',
                             min.cells=0, min.features=0)
-  #Calc TF IDF, Calc SVD then LSI
-  obj <- RunLSI(object = obj, n = nComponents, scale.max = NULL)
+
+  obj[["lsi"]] <- CreateDimReducObject(
+    embeddings = matSVD,
+    assay =  DefaultAssay(obj), #assay type
+    key = 'lsi_'
+  )
 
   return(obj)
-
 }
 
 #' Find Cluster using SNN graph clustering methods

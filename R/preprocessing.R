@@ -11,7 +11,7 @@
 #' @rdname readFragments
 #' @export
 readFragments <- function(file = NULL,
-                          minFrags = 100, ...){
+                          minFrags = 0, ...){
 
   message("Reading in Fragment files ...")
   fragments <- fread(file, header = FALSE, data.table = FALSE)

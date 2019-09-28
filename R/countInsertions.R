@@ -5,7 +5,7 @@
 #' @importFrom S4Vectors DataFrame
 #' @importFrom S4Vectors mcols
 #'
-#' @param query GenomicRanges object  to store feature information
+#' @param feature GenomicRanges object  to store feature information
 #' @param fragments GenomicRanges object
 #' @param by metadata in mcols
 #' @param ... Arguments passed to other methods
@@ -14,7 +14,7 @@
 #'
 #' @rdname countInsertions
 #' @export
-countInsertions <- function(query, fragments, by = "RG", ...){
+countInsertions <- function(fragments, feature,  by = "RG", ...){
   #Count By Fragments Insertions
   inserts <- c(
     GRanges(seqnames = seqnames(fragments),
@@ -25,7 +25,7 @@ countInsertions <- function(query, fragments, by = "RG", ...){
             RG = mcols(fragments)[,by])
   )
   by <- "RG"
-  overlapDF <- DataFrame(findOverlaps(query, inserts,
+  overlapDF <- DataFrame(findOverlaps(feature, inserts,
                                       ignore.strand = TRUE,
                                       maxgap=-1L, minoverlap=0L, type = "any"))
   overlapDF$name <- mcols(inserts)[overlapDF[, 2], by]
@@ -40,7 +40,7 @@ countInsertions <- function(query, fragments, by = "RG", ...){
     i = overlapTDF[, 1],
     j = overlapTDF[, 4],
     x = rep(1, nrow(overlapTDF)),
-    dims = c(length(query), length(unique(overlapDF$name))))
+    dims = c(length(feature), length(unique(overlapDF$name))))
   colnames(sparseM) <- unique(overlapDF$name)
   total <- total[colnames(sparseM)]
   frip <- frip[colnames(sparseM)]

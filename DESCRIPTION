@@ -1,7 +1,7 @@
 Package: scatacr
 Type: Package
 Title: Single Cell ATAC-seq Analysis
-Version: 0.1.0
+Version: 0.1.1
 Author: Zhougeng Xu
 Maintainer: Zhougeng Xu <xuzhougeng@163.com>
 Description: More about what it does (maybe more than one line)

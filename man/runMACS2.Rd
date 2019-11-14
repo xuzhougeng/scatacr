@@ -2,7 +2,7 @@
 % Please edit documentation in R/peak.R
 \name{runMACS2}
 \alias{runMACS2}
-\title{Run MACS2}
+\title{Run MACS2 to call peak in pseduo-bulk}
 \usage{
 runMACS2(bed.path = NULL, peak.dir = NULL, macs2Path = "macs2",
   method = "q", cutoff = 0.05, shift = -75, extsize = 150,
@@ -30,5 +30,5 @@ runMACS2(bed.path = NULL, peak.dir = NULL, macs2Path = "macs2",
 \item{addtion}{additional options passed to MACS2}
 }
 \description{
-Run MACS2
+Run MACS2 to call peak in pseduo-bulk
 }

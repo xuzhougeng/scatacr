@@ -1,3 +1,68 @@
+#' Build window along the genome
+#'
+#' @importFrom GenomicRanges GRanges
+#' @importFrom GenomicRanges tile
+#' @importFrom GenomeInfoDb keepStandardChromosomes
+#'
+#' @param seqname sequence name
+#' @param size sequence size
+#' @param windowSize each window size
+#'
+#' @export
+buildWindows <- function(seqname,
+                         size,
+                         windowSize = 5000){
+
+  chromSizes <- GRanges(seqname, IRanges(1,size))
+  chromSizes <- keepStandardChromosomes(chromSizes,
+                                        pruning.mode = "coarse")
+
+  windows <- unlist(tile(chromSizes, width = windowSize))
+  return(windows)
+}
+
+
+#' Read summit
+#'
+#' @importFrom GenomicRanges makeGRangesFromDataFrame
+#' @importFrom data.table fread
+#'
+#' @param file summit file
+#'
+#' @export
+readSummits <- function(file){
+  df <- fread(file,
+              col.names = c("chr","start","end","name","score"),
+              data.table = FALSE,
+              verbose = FALSE)
+  #do not keep name column it can make the size really large
+  df <- df[,c(1,2,3,5)]
+  gr <- makeGRangesFromDataFrame(df=df,
+                                 keep.extra.columns = TRUE,
+                                 starts.in.df.are.0based = TRUE)
+  return(gr)
+}
+
+
+
+#' Convert dgCMatrix into  matrix
+#'
+#' @param mat dgcMatrix object
+#' @export
+as_matrix <- function(mat){
+
+  row_pos <- mat@i
+  col_pos <- findInterval(seq(mat@x)-1,mat@p[-1])
+
+  tmp <- asMatrix(rp = row_pos, cp = col_pos, z = mat@x,
+                  nrows =  mat@Dim[1], ncols = mat@Dim[2])
+
+  row.names(tmp) <- mat@Dimnames[[1]]
+  colnames(tmp) <- mat@Dimnames[[2]]
+  return(tmp)
+
+}
+
 #' Write the fragments to BED
 #'
 #' @importFrom BiocGenerics start
@@ -11,7 +76,6 @@
 #' @param filename output filename
 #' @param append If TRUE, the file is opened in append mode and column names (header row) are not written.
 #'
-#' @rdname writeFragmentsToBed
 #' @export
 writeFragmentsToBed <- function(gr,
                                 subset = NULL,

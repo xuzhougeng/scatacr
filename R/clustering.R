@@ -1,181 +1,88 @@
-#' LSI reduction analysis
-#'
-#' @importFrom Seurat CreateSeuratObject
-#' @importFrom Seurat CreateDimReducObject
-#' @importFrom Seurat DefaultAssay
-#' @importFrom irlba irlba
-#'
-#' @param mat GenomicRanges object  to store feature information
-#' @param nComponents Number of singular values to compute
-#' @param binarize binarize the matrix
-#' @param nFeatures Getting top N features for download analysis
-#' @param ... Arguments passed to seurat RunLSI
-#'
-#' @return Seurat object
-#'
-#' @rdname seuratLSI
-#' @export
-seuratLSI <- function(mat, nComponents = 50,
-                        binarize = TRUE,
-                        nFeatures = NULL, ...){
-
-  #TF IDF LSI adapted from flyATAC
-  row.names(mat) <- paste0("W_", 1:nrow(mat))
-  cs <- Matrix::colSums(mat)
-  if(binarize){
-    message(paste0("Binarizing matrix..."))
-    mat@x[mat@x > 0] <- 1
-  }
-  if(!is.null(nFeatures)){
-    message(paste0("Getting top ", nFeatures, " features..."))
-    mat <- mat[head(order(Matrix::rowSums(mat),decreasing = TRUE),nFeatures),]
-  }
-
-  #Calc TF IDF
-  message("Computing Term Frequency IDF...")
-  freqs <- Matrix::t(Matrix::t(mat)/Matrix::colSums(mat))
-  idf   <- as(log(1 + ncol(mat) / Matrix::rowSums(mat)), "sparseVector")
-  tfidf <- as(Matrix::Diagonal(x=as.vector(idf)), "sparseMatrix") %*% freqs
-
-  #Calc SVD then LSI
-  message("Computing SVD using irlba...")
-  svd <- irlba(tfidf, nComponents, nComponents)
-  svdDiag <- matrix(0, nrow=nComponents, ncol=nComponents)
-  diag(svdDiag) <- svd$d
-  matSVD <- t(svdDiag %*% t(svd$v))
-  rownames(matSVD) <- colnames(mat)
-  colnames(matSVD) <- paste0("LSI_",seq_len(ncol(matSVD)))
-
-  #Make Seurat Object
-  message("Making Seurat Object...")
-  mat <- mat[1:100,] + 1
-  obj <- CreateSeuratObject(mat,
-                            assay = "ATAC",
-                            project='scATAC',
-                            min.cells=0, min.features=0)
-
-  obj[["lsi"]] <- CreateDimReducObject(
-    embeddings = matSVD,
-    assay =  DefaultAssay(obj), #assay type
-    key = 'lsi_'
-  )
-
-  return(obj)
-}
-
 #' Find Cluster using SNN graph clustering methods
 #'
 #' @importFrom Seurat FindNeighbors
 #' @importFrom Seurat FindClusters
 #'
 #' @param obj Matrix  cell-by-feature matrix
-#' @param minGroupSize the mininum cell required to be cluster,
+#' @param min.group.size the mininum cell required to be cluster,
 #' 200 is required according to 2019, NBT.
 #' Set it to NULL if the peaks are called
 #' @param dims.use Dimensions of reduction to use as input
-#' @param initialResolution Value of the resolution parameter,
+#' @param init.resolution Value of the resolution parameter,
 #' use a value above (below) 1.0 if you want to obtain a larger (smaller) number of communities
 #' @param n.start Number of random starts
-#' @param ... Arguments passed to Seurat's FindNeighbors or FindClusters
+#' @param k.param Defines k for the k-nearest neighbor algorithm
+#' @param prune.SNN Sets the cutoff for acceptable Jaccard index
+#' when computing the neighborhood overlap for the
+#' SNN construction. Any edges with values less than
+#' or equal to this will be set to 0 and removed from
+#' the SNN graph. Essentially sets the strigency of pruning
+#' (0 — no pruning, 1 — prune everything).
+#' @param annoy.metric Distance metric for annoy. Options include:
+#' euclidean, cosine, manhattan, and hamming
+#' @param ... Arguments passed to Seurat's
+#' FindNeighbors and FindClusters
 #'
-#' @return Seurat object
+#' @return named vector
 #'
-#' @rdname addClusters
 #' @export
-addClusters <- function(obj,
-                        minGroupSize = 50,
-                        dimsUse = seq_len(50),
-                        initialResolution = 0.8,
-                        nStart = 10, ...){
+clusterBySNN <- function(obj,
+                        min.group.size = 200,
+                        dims.use = 1:50,
+                        init.resolution = 0.8,
+                        n.start = 10,
+                        k.param = 20,
+                        prune.SNN = 1/15,
+                        annoy.metric = "euclidean",
+                        ...){
+
+  # dimenstion to use for SNN
+  obj <- obj[, dims.use]
   # get the SNN
-  obj<- FindNeighbors(obj, reduction = "lsi", dims = dimsUse)
+  obj <- FindNeighbors(obj, k.param=k.param,
+                       prune.SNN = prune.SNN,
+                       annoy.metric = annoy.metric,
+                       ...)
 
+  obj <- obj[['snn']]
   #First Iteration of Find Clusters
+  currentResolution <- init.resolution
 
-  currentResolution <- initialResolution
-  obj <- FindClusters(obj, resolution = currentResolution, n.start = nStart)
-  res_name <-  colnames(obj@meta.data)[grepl(currentResolution, colnames(obj@meta.data))]
-  minSize <- min(table(obj@meta.data[[res_name]]))
-  nClust <- length(unique(paste0(obj@meta.data[[res_name]])))
-  message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s", currentResolution, nClust, minSize))
+  cluster <- FindClusters(obj,
+                      resolution = currentResolution,
+                      n.start = n.start)
 
-  if (is.null(minGroupSize)){
-    return(obj)
+  # get
+  clusterNumber <- length(levels(cluster[,1]))
+  minSize <- min(table(cluster[,1]))
+  message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s",
+                  currentResolution,
+                  clusterNumber,
+                  minSize))
+
+  if (is.null(min.group.size)){
+    cls <- cluster[,1]
+    names(cls) <- row.names(cluster)
+    return(cls)
   }
 
   #If clusters are smaller than minimum group size
-  while(minSize <= minGroupSize){
+  while(minSize <= min.group.size){
 
-    res_name <-  colnames(obj@meta.data)[grepl(currentResolution, colnames(obj@meta.data))]
+    currentResolution <- currentResolution * init.resolution
+    cluster <- FindClusters(obj, resolution = currentResolution)
 
-    obj@meta.data <- obj@meta.data[,-which(colnames(obj@meta.data)==res_name)]
-    currentResolution <- currentResolution*initialResolution
-    obj <- FindClusters(obj, resolution = currentResolution)
+    clusterNumber <- length(levels(cluster[,1]))
+    minSize <- min(table(cluster[,1]))
 
-    res_name <-  colnames(obj@meta.data)[grepl(currentResolution, colnames(obj@meta.data))]
-    minSize <- min(table(obj@meta.data[[res_name]]))
-    nClust <- length(unique(paste0(obj@meta.data[[res_name]])))
-
-    message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s", currentResolution, nClust, minSize))
+    message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s",
+                    currentResolution,
+                    clusterNumber,
+                    minSize))
   }
-  return(obj)
+
+  cls <- cluster[,1]
+  names(cls) <- row.names(cluster)
+  return(cls)
+  return(cls)
 }
-
-
-
-
-# seuratLSI <- function(mat, nComponents = 50, binarize = TRUE, nFeatures = NULL){
-#   #TF IDF LSI adapted from flyATAC
-#   cs <- Matrix::colSums(mat)
-#   if(binarize){
-#     message(paste0("Binarizing matrix..."))
-#     mat@x[mat@x > 0] <- 1
-#   }
-#   if(!is.null(nFeatures)){
-#     message(paste0("Getting top ", nFeatures, " features..."))
-#     mat <- mat[head(order(Matrix::rowSums(mat),decreasing = TRUE),nFeatures),]
-#   }
-#
-#   #Calc TF IDF
-#   message("Computing Term Frequency IDF...")
-#   freqs <- t(t(mat)/Matrix::colSums(mat))
-#   idf   <- as(log(1 + ncol(mat) / Matrix::rowSums(mat)), "sparseVector")
-#   tfidf <- as(Matrix::Diagonal(x=as.vector(idf)), "sparseMatrix") %*% freqs
-#   #Calc SVD then LSI
-#   message("Computing SVD using irlba...")
-#   svd <- irlba::irlba(tfidf, nComponents, nComponents)
-#   svdDiag <- matrix(0, nrow=nComponents, ncol=nComponents)
-#   diag(svdDiag) <- svd$d
-#   matSVD <- t(svdDiag %*% t(svd$v))
-#   rownames(matSVD) <- colnames(mat)
-#   colnames(matSVD) <- paste0("PC",seq_len(ncol(matSVD)))
-#   #Make Seurat Object
-#   message("Making Seurat Object...")
-#   mat <- mat[1:100,] + 1
-#   rownames(mat) <- seq(1,nrow(mat))
-#   obj <- CreateSeuratObject(mat, project='scATAC', min.cells=0, min.features=0)
-#   obj <- CreateDimReducObject(object = obj, reduction.type = "pca", slot = "cell.embeddings", new.data = matSVD)
-#   obj <- CreateDimReducObject(object = obj, reduction.type = "pca", slot = "key", new.data = "PC")
-#
-#   obj@reductions$pca <- CreateDimReducObject(embeddings = matSVD, key = "PC", assay = "scATAC")
-#   return(obj)
-# }
-
-# addClusters <- function(obj, minGroupSize = 50, dims.use = seq_len(50), initialResolution = 0.8){
-#   #First Iteration of Find Clusters
-#   currentResolution <- initialResolution
-#   obj <- FindClusters(object = obj, reduction.type = "pca", dims.use = dims.use, resolution = currentResolution, print.output = FALSE)
-#   minSize <- min(table(obj@meta.data[[paste0("res.",currentResolution)]]))
-#   nClust <- length(unique(paste0(obj@meta.data[[paste0("res.",currentResolution)]])))
-#   message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s", currentResolution, nClust, minSize))
-#   #If clusters are smaller than minimum group size
-#   while(minSize <= minGroupSize){
-#     obj@meta.data <- obj@meta.data[,-which(colnames(obj@meta.data)==paste0("res.",currentResolution))]
-#     currentResolution <- currentResolution*initialResolution
-#     obj <- FindClusters(object = obj, reduction.type = "pca", dims.use = dims.use, resolution = currentResolution, print.output = FALSE, force.recalc = TRUE)
-#     minSize <- min(table(obj@meta.data[[paste0("res.",currentResolution)]]))
-#     nClust <- length(unique(paste0(obj@meta.data[[paste0("res.",currentResolution)]])))
-#     message(sprintf("Current Resolution = %s, No of Clusters = %s, Minimum Cluster Size = %s", currentResolution, nClust, minSize))
-#   }
-#   return(obj)
-# }

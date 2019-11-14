@@ -8,7 +8,6 @@
 #' @param file fragments file path
 #' @param minFrags filter cell with few fragments
 #'
-#' @rdname readFragments
 #' @export
 readFragments <- function(file = NULL,
                           minFrags = 0, ...){
@@ -35,59 +34,21 @@ readFragments <- function(file = NULL,
   }
 }
 
+
+
 #' Get the cell number
 #' @param fragments GRanges object
-#' @param minFrags filter cell with few fragments
 #'
-#' @rdname getCellNum
 #' @export
-getCellNum <- function(fragments, minFrags = 0){
+getCellNum <- function(fragments){
 
-  cell_number <- sum(table(fragments$RG) > minFrags)
+  cell_number <- length(unique(fragments$RG))
 
   return(cell_number)
 
 }
 
-#' Filter Fragments by fragments and enrichment score
-#'
-#' @importFrom S4Vectors mcols
-#'
-#' @param fragments GRanges object
-#' @param tssSingles tssSingle From getTssProfile
-#' @param filterFrags threshold of fragments per cell
-#' @param filterTSS threshold of enrichment score of TSS
-#' @param prefix prefix add to barcode
-#'
-#' @rdname filterFragments
-#' @export
-filterFragments <- function(fragments,
-                            tssSingles,
-                            filterFrags = 1000,
-                            filterTSS = 8,
-                            prefix = NULL
-                            ){
-
-  tssSingles$cellCall <- 0
-  tssSingles$cellCall[tssSingles$uniqueFrags >= filterFrags &
-                        tssSingles$enrichment >= filterTSS] <- 1
-
-
-  fragments <- fragments[mcols(fragments)$RG %in% rownames(tssSingles)[tssSingles$cellCall==1]]
-
-  # Add prefix to barcode --------------------------
-  if ( is.null(prefix)){
-    return(fragments)
-  }else{
-    fragments$RG <- paste0(name,"#",fragments$RG)
-    return(fragments)
-  }
-
-}
-
-
-
-#' TSS Profile
+#' Get TSS Profile
 #'
 #' @importFrom magrittr %>%
 #' @importFrom GenomicRanges resize
@@ -96,7 +57,6 @@ filterFragments <- function(fragments,
 #' @param fragments a GRanges object
 #' @param txdb txdb object
 #' @param batchSize split the cell into different batch for performance
-#' @rdname getTssProfile
 #' @export
 getTssProfile <- function(fragments,
                           txdb,
@@ -141,9 +101,10 @@ getTssProfile <- function(fragments,
 #'
 #' @return An list with sparseMatrix, FRIP and total fragments
 #'
-#' @rdname insertionProfileSingles
 #' @export
-insertionProfileSingles <- function(fragments, feature, by = "RG",
+insertionProfileSingles <- function(fragments,
+                                    feature,
+                                    by = "RG",
                                     getInsertions = TRUE,
                                     fix = "center",
                                     flank = 2000,
@@ -215,8 +176,14 @@ insertionProfileSingles_helper <- function(feature,
   #Convert To Insertion Sites
   if(getInsertions){
     insertions <- c(
-      GRanges(seqnames = seqnames(fragments), ranges = IRanges(start(fragments), start(fragments)), RG = mcols(fragments)[,by]),
-      GRanges(seqnames = seqnames(fragments), ranges = IRanges(end(fragments), end(fragments)), RG = mcols(fragments)[,by])
+      GRanges(seqnames = seqnames(fragments),
+              ranges = IRanges(start(fragments),
+                               start(fragments)),
+              RG = mcols(fragments)[,by]),
+      GRanges(seqnames = seqnames(fragments),
+              ranges = IRanges(end(fragments),
+                               end(fragments)),
+              RG = mcols(fragments)[,by])
     )
     by <- "RG"
   }else{
@@ -245,7 +212,12 @@ insertionProfileSingles_helper <- function(feature,
   overlap$dist[other] <- start(insertions[overlap[other,2]]) - start(center[overlap[other,1]])
 
   #Insertion Mat
-  profile_mat <- tabulate2dCpp(x1 = overlap$id, y1 = overlap$dist, xmin = 1, xmax = ids, ymin = -flank, ymax = flank)
+  profile_mat <- tabulate2dCpp(x1 = overlap$id,
+                               y1 = overlap$dist,
+                               xmin = 1,
+                               xmax = ids,
+                               ymin = -flank,
+                               ymax = flank)
   colnames(profile_mat) <- unique(overlap$name)
 
   # insertion number fall into the flank of TSS

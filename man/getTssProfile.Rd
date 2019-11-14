@@ -2,7 +2,7 @@
 % Please edit documentation in R/preprocessing.R
 \name{getTssProfile}
 \alias{getTssProfile}
-\title{TSS Profile}
+\title{Get TSS Profile}
 \usage{
 getTssProfile(fragments, txdb, batchSize = 1000)
 }
@@ -14,5 +14,5 @@ getTssProfile(fragments, txdb, batchSize = 1000)
 \item{batchSize}{split the cell into different batch for performance}
 }
 \description{
-TSS Profile
+Get TSS Profile
 }

@@ -1,25 +1,6 @@
 
 '%ni%' <- Negate('%in%')
 
-#' turn dgCMatrix into a matrix
-#'
-#' @param mat dgcMatrix object
-#' @rdname as_matrix
-#' @export
-as_matrix <- function(mat){
-
-  row_pos <- mat@i
-  col_pos <- findInterval(seq(mat@x)-1,mat@p[-1])
-
-  tmp <- asMatrix(rp = row_pos, cp = col_pos, z = mat@x,
-                  nrows =  mat@Dim[1], ncols = mat@Dim[2])
-
-  row.names(tmp) <- mat@Dimnames[[1]]
-  colnames(tmp) <- mat@Dimnames[[2]]
-  return(tmp)
-
-}
-
 #' calcuate  means of each group
 #'
 #' @importFrom magrittr %>%

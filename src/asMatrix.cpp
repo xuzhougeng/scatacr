@@ -13,7 +13,7 @@ IntegerMatrix asMatrix(NumericVector rp,
   IntegerMatrix  mat(nrows, ncols);
 
   for (int i = 0; i < k; i++){
-    mat(rp[k],cp[k]) = z[k];
+    mat(rp[i],cp[i]) = z[i];
   }
 
   return mat;

@@ -1,6 +1,6 @@
 #' Generate insertion count matrixy by feature
 #'
-#' @importFrom GenomicRanges GRanges
+#' @importFrom GenomicRanges GRanges seqnames start end
 #' @importFrom S4Vectors DataFrame
 #' @importFrom S4Vectors mcols
 #'
@@ -52,6 +52,9 @@ countInsertions <- function(fragments, feature,  by = "RG", ...){
     x = rep(1, nrow(overlapTDF)),
     dims = c(length(feature), length(unique(overlapDF$name))))
   colnames(sparseM) <- unique(overlapDF$name)
+  row.names(sparseM) <- paste(seqnames(feature), start(feature), end(feature), sep = "_")
+
+  # statistical
   total <- total[colnames(sparseM)]
   frip <- frip[colnames(sparseM)]
   out <- list(counts = sparseM, frip = frip, total = total)
